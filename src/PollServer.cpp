@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   PollServer.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: lylrandr <lylrandr@student.42lausanne.ch>  +#+  +:+       +#+        */
+/*   By: cjauregu <cjauregu@student.42lausanne.c    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/14 17:49:36 by lylrandr          #+#    #+#             */
-/*   Updated: 2026/05/04 10:59:37 by lylrandr         ###   ########.fr       */
+/*   Updated: 2026/05/06 19:54:48 by cjauregu         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,11 +52,12 @@ void	PollServer::_newConnection(int serverFd){
 			_addFd(clientStatus);
 			_clients[clientStatus] = new ClientConnection(clientStatus);
 			_states[clientStatus] = ClientState();
+			_clientServerIndex[clientStatus] = i;
 		}
 	}
 }
 
-void	PollServer::_clientEvent(size_t index){
+void	PollServer::_clientEvent(size_t index, const std::vector<ServerConfig> &servers){
 	int			clientFd;
 	std::string	buffer;
 	HttpRequest	request;
@@ -72,8 +73,8 @@ void	PollServer::_clientEvent(size_t index){
 	buffer = _clients[clientFd]->getReadBuffer();
 	// request	 = parseRequest(buffer);
 	// HARDCODE : WILL REMOVE
-	std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\nConnection: close\r\n\r\nHello World!\n";
-	_clients[clientFd]->prepResponse(response);
+	size_t serverIndex = _clientServerIndex[clientFd];
+	_clients[clientFd]->prepResponse(servers[serverIndex]);
 	_enableWrite(clientFd);
 }
 
@@ -101,7 +102,7 @@ void	PollServer::addServer(ServerConfig const &server){
 	_addFd(fd);
 }
 
-void	PollServer::runServer(){
+void	PollServer::runServer(const std::vector<ServerConfig> &servers){
 	bool	isServer;
 	int		ret;
 	int		clientFd;
@@ -122,7 +123,7 @@ void	PollServer::runServer(){
 			}
 			else{
 				if (_fds[i].revents & POLLIN)
-					_clientEvent(i);
+					_clientEvent(i, servers);
 				if (_fds[i].revents & POLLOUT){
 					clientFd = _fds[i].fd;
 					_clients[clientFd]->handleWrite();

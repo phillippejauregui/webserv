@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ClientConnection.cpp                               :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: lylrandr <lylrandr@student.42lausanne.ch>  +#+  +:+       +#+        */
+/*   By: cjauregu <cjauregu@student.42lausanne.c    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/13 19:15:42 by lylrandr          #+#    #+#             */
-/*   Updated: 2026/04/27 16:28:36 by lylrandr         ###   ########.fr       */
+/*   Updated: 2026/05/06 19:53:51 by cjauregu         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,7 +58,24 @@ bool	ClientConnection::handleWrite(){
 	return (true);
 }
 
-void	ClientConnection::prepResponse(std::string const &response){
-	_writeBuffer = response;
+std::string readFile(const std::string &path){
+    std::ifstream file(path.c_str());
+    if (!file.is_open())
+        throw std::runtime_error("Could not open file: " + path);
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
+
+
+void	ClientConnection::prepResponse(const ServerConfig &conf){
+    std::string body = readFile(conf.root + "/" + conf.index);
+    std::stringstream response;
+    response << "HTTP/1.1 200 OK\r\n";
+    response << "Content-Type: text/html\r\n";
+    response << "Content-Length: " << body.size() << "\r\n";
+    response << "\r\n";
+    response << body;
+	_writeBuffer = response.str();
 	_writeOffset = 0;
 }

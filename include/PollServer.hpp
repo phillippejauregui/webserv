@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   PollServer.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: lylrandr <lylrandr@student.42lausanne.ch>  +#+  +:+       +#+        */
+/*   By: cjauregu <cjauregu@student.42lausanne.c    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/14 16:50:23 by lylrandr          #+#    #+#             */
-/*   Updated: 2026/05/04 11:06:42 by lylrandr         ###   ########.fr       */
+/*   Updated: 2026/05/06 19:55:08 by cjauregu         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,13 +29,14 @@ class PollServer{
 		std::vector<ServerSocket*>			_servers;
 		std::map<int, ClientConnection*>	_clients;
 		std::map<int, ClientState>			_states;
+		std::map<int, size_t>				_clientServerIndex;
 
 		PollServer(const PollServer &src);
 		PollServer&							operator=(const PollServer &rhs);
 		void								_addFd(int fd);
 		void								_removeFd(int fd);
 		void								_newConnection(int serverFd);
-		void								_clientEvent(size_t index);
+		void								_clientEvent(size_t index, const std::vector<ServerConfig> &servers);
 		void								_enableWrite(int fd);
 		void								_disableWrite(int fd);
 
@@ -44,7 +45,7 @@ class PollServer{
 		~PollServer();
 
 		void	addServer(ServerConfig const &server);
-		void	runServer();
+		void	runServer(const std::vector<ServerConfig> &servers);
 };
 
 #endif

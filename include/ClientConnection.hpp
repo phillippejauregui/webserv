@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ClientConnection.hpp                               :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: lylrandr <lylrandr@student.42lausanne.ch>  +#+  +:+       +#+        */
+/*   By: cjauregu <cjauregu@student.42lausanne.c    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/13 18:27:14 by lylrandr          #+#    #+#             */
-/*   Updated: 2026/04/27 16:26:23 by lylrandr         ###   ########.fr       */
+/*   Updated: 2026/05/06 19:53:46 by cjauregu         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,9 @@
 # include <map>
 # include <unistd.h>
 # include <sys/socket.h>
+#include <fstream>
+#include <sstream>
+#include "ServerConfig.hpp"
 
 class	ClientConnection{
 	private :
@@ -37,7 +40,7 @@ class	ClientConnection{
 		std::string const&		getReadBuffer() const;
 		bool					handleRead();
 		bool					handleWrite();
-		void					prepResponse(std::string const &response);
+		void					prepResponse(const ServerConfig &conf);
 };
 
 #endif
