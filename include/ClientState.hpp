@@ -6,7 +6,7 @@
 /*   By: lylrandr <lylrandr@student.42lausanne.ch>  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/13 12:48:54 by lylrandr          #+#    #+#             */
-/*   Updated: 2026/04/13 13:28:58 by lylrandr         ###   ########.fr       */
+/*   Updated: 2026/05/12 11:35:00 by lylrandr         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,7 @@ struct	ClientState{
 	bool		headersComplete;
 	bool		requestReady;
 	size_t		contentLength;
+	
 	ClientState() : headersComplete(false), requestReady(false), contentLength(0){}
 };
 

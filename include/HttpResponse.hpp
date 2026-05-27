@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpResponse.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: lylrandr <lylrandr@student.42lausanne.ch>  +#+  +:+       +#+        */
+/*   By: cjauregu <cjauregu@student.42lausanne.c    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/13 15:57:48 by lylrandr          #+#    #+#             */
-/*   Updated: 2026/04/13 16:06:51 by lylrandr         ###   ########.fr       */
+/*   Updated: 2026/05/17 11:02:46 by cjauregu         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 
 # include <string>
 # include <map>
+# include <dirent.h>
 
 struct	HttpResponse{
 	int									statusCode;

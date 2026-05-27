@@ -6,7 +6,7 @@
 /*   By: cjauregu <cjauregu@student.42lausanne.c    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/14 17:49:36 by lylrandr          #+#    #+#             */
-/*   Updated: 2026/05/12 21:49:42 by cjauregu         ###   ########.fr       */
+/*   Updated: 2026/05/27 16:46:56 by cjauregu         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,29 +57,60 @@ void	PollServer::_newConnection(int serverFd){
 	}
 }
 
-void	PollServer::_clientEvent(size_t index){
-	int				clientFd;
-	std::string		buffer;
-	HttpRequest		request;
-
-	clientFd = _fds[index].fd;
-	if (_clients[clientFd]->handleRead() == false){
-		delete _clients[clientFd];
-		_clients.erase(clientFd);
-		_states.erase(clientFd);
-		_removeFd(clientFd);
-		return;
-	}
-	buffer = _clients[clientFd]->getReadBuffer();
-	request	 = parseRequest(buffer);
-	LocationConfig loc = route(request, _clientConfig[clientFd]);
-	std::string fullpath = resolvePath(request, _clientConfig[clientFd], loc);
-	std::string response = serveFile(fullpath);
-	// HARDCODE : WILL REMOVE
-	// std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\nConnection: close\r\n\r\nHello World!\n";
-	_clients[clientFd]->prepResponse(response);
-	_enableWrite(clientFd);
+void PollServer::_clientEvent(size_t index)
+{
+    int clientFd = _fds[index].fd;
+    ClientConnection* client = _clients[clientFd];
+    ClientState& state = _states[clientFd];
+    if (!client->handleRead()) {
+        delete client;
+        _clients.erase(clientFd);
+        _states.erase(clientFd);
+        _removeFd(clientFd);
+        return;
+    }
+    while (true) {
+        const std::string& buf = client->getReadBuffer();
+        if (buf.empty())
+            break;
+        if (!state.headersComplete) {
+            size_t headerEnd = buf.find("\r\n\r\n");
+            if (headerEnd == std::string::npos)
+                break;
+            state.headersComplete = true;
+            size_t pos = buf.find("Content-Length:");
+            if (pos != std::string::npos) {
+                size_t start = pos + 15;
+                size_t end = buf.find("\r\n", start);
+                std::string lenStr = buf.substr(start, end - start);
+                state.contentLength = std::atoi(lenStr.c_str());
+            } else {
+                state.contentLength = 0;
+            }
+        }
+        if (!state.requestReady) {
+            size_t headerEnd = buf.find("\r\n\r\n");
+            size_t bodyStart = headerEnd + 4;
+            size_t bodySize = buf.size() - bodyStart;
+            if (bodySize < state.contentLength)
+                break;
+            state.requestReady = true;
+        }
+        HttpRequest request;
+        size_t consumed = 0;
+        if (!parseRequestFromBuffer(buf, request, consumed))
+            break;
+        client->popReadBytes(consumed);
+        LocationConfig loc = route(request, _clientConfig[clientFd]);
+        HttpResponse response = execute(request, loc, _clientConfig[clientFd]);
+        client->prepResponse(response);
+        state = ClientState();
+    }
+    if (client->hasPendingResponses())
+        _enableWrite(clientFd);
 }
+
+
 
 void	PollServer::_enableWrite(int fd){
 	for(size_t i = 0; i < _fds.size(); i++){
@@ -128,12 +159,30 @@ void	PollServer::runServer(){
 			else{
 				if (_fds[i].revents & POLLIN)
 					_clientEvent(i);
-				if (_fds[i].revents & POLLOUT){
-					clientFd = _fds[i].fd;
-					_clients[clientFd]->handleWrite();
-					if (_clients[clientFd]->getOffset() >= _clients[clientFd]->getBuffer().size())
-						_disableWrite(_clients[clientFd]->getFd());
-				}
+					if (_fds[i].revents & POLLOUT){
+						clientFd = _fds[i].fd;
+						ClientConnection *client = _clients[clientFd];
+					
+						if (!client->handleWrite()) {
+							delete client;
+							_clients.erase(clientFd);
+							_states.erase(clientFd);
+							_removeFd(clientFd);
+							break;
+						}
+						if (client->writeComplete()) {
+							client->popResponse();
+							if (client->hasPendingResponses()) {
+								_enableWrite(clientFd);
+							} else {
+								_disableWrite(clientFd);
+								if (_clients[clientFd]->getReadBuffer().empty()) {
+									_clients[clientFd]->resetReadState();
+									_clients[clientFd]->clearWrite();
+								}
+							}
+						}
+					}					
 				if (_fds[i].revents & (POLLERR | POLLHUP)){
 					clientFd = _fds[i].fd;
 					delete _clients[clientFd];

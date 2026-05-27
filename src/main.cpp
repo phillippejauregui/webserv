@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cjauregu <cjauregu@student.42lausanne.c    +#+  +:+       +#+        */
+/*   By: lylrandr <lylrandr@student.42lausanne.ch>  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/09 14:54:32 by lylrandr          #+#    #+#             */
-/*   Updated: 2026/05/12 22:38:03 by cjauregu         ###   ########.fr       */
+/*   Updated: 2026/05/14 14:18:39 by lylrandr         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 

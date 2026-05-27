@@ -1,15 +1,3 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   ClientConnection.hpp                               :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: cjauregu <cjauregu@student.42lausanne.c    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/04/13 18:27:14 by lylrandr          #+#    #+#             */
-/*   Updated: 2026/05/12 21:45:00 by cjauregu         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
 #ifndef CLIENTCONNECTION_HPP
 #define CLIENTCONNECTION_HPP
 
@@ -17,30 +5,55 @@
 # include <map>
 # include <unistd.h>
 # include <sys/socket.h>
-#include <fstream>
-#include <sstream>
-#include "ServerConfig.hpp"
+# include <fstream>
+# include <sstream>
+# include <deque>
+# include <cstdint>
+# include <cerrno>
+# include <cstring>
+# include "ServerConfig.hpp"
+# include "HttpResponse.hpp"
 
-class	ClientConnection{
-	private :
-		int			_fd;
-		std::string	_readBuffer;
-		std::string	_writeBuffer;
-		size_t		_writeOffset;
+class ClientConnection {
+private :
+    int             _fd;
+    std::string     _readBuffer;
+    bool            _headersParsed;
+    size_t          _expectedLength;
+    size_t          _headerEnd;
 
-		ClientConnection(ClientConnection const &src);
-		ClientConnection&	operator=(ClientConnection const &rhs);
-	public :
-		ClientConnection(int fd);
-		~ClientConnection();
+    std::deque<std::string> _responseQueue;
+    size_t      _writeOffset;
+    uint64_t    _requestId;
 
-		std::string				getBuffer() const;
-		size_t					getOffset() const;
-		int						getFd() const;
-		std::string const&		getReadBuffer() const;
-		bool					handleRead();
-		bool					handleWrite();
-		void					prepResponse(const std::string &body);
+    ClientConnection(ClientConnection const &src);
+    ClientConnection& operator=(ClientConnection const &rhs);
+
+public :
+    ClientConnection(int fd);
+    ~ClientConnection();
+
+    std::string const& getReadBuffer() const;
+    void popReadBytes(size_t n);
+
+    void enqueueResponse(const std::string &resp);
+    bool hasPendingResponses() const;
+    const std::string &currentResponse() const;
+    void popResponse();
+
+    bool handleWrite();
+    bool writeComplete() const;
+    void clearWrite();
+    void prepResponse(const HttpResponse &response);
+    bool handleRead();
+    bool isRequestComplete() const;
+    void resetReadState();
+    void reset();
+    void setRequestId(uint64_t id);
+    uint64_t getRequestId() const;
+    std::string getBuffer() const;
+    size_t getOffset() const;
+    int getFd() const;
 };
 
 #endif

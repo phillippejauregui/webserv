@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Webserv Test Suite</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<h1>Webserv Test Suite</h1>
+<p>This page tests GET, POST, DELETE, and CGI functionality.</p>
+
+<section>
+    <h2>GET Test</h2>
+    <button onclick="window.location='/cgi-bin/test.py?name=Jabba'">
+        Run Python CGI (GET)
+    </button>
+    <button onclick="window.location='/cgi-bin/test.sh?hello=world'">
+        Run Bash CGI (GET)
+    </button>
+</section>
+
+<section>
+    <h2>POST Test (File Upload)</h2>
+    <form id="uploadForm" method="POST" enctype="multipart/form-data" action="/upload">
+        <input type="file" name="file">
+        <button type="submit">Upload File</button>
+    </form>
+    <p id="uploadResult"></p>
+</section>
+
+<section>
+    <h2>DELETE Test</h2>
+    <button onclick="sendDelete('/deletable/file1.txt')">Delete file1.txt</button>
+    <button onclick="sendDelete('/deletable/file2.txt')">Delete file2.txt</button>
+    <button onclick="sendDelete('/deletable/protected.txt')">Delete protected.txt (should fail)</button>
+    <button onclick="sendDelete('/deletable')">Delete directory (should fail)</button>
+    <p id="deleteResult"></p>
+</section>
+
+<section>
+    <h2>POST Test (CGI)</h2>
+    <form id="cgiPostForm" method="POST" action="/cgi-bin/test.py">
+        <input type="text" name="msg" placeholder="Message to CGI">
+        <button type="submit">Send POST to CGI</button>
+    </form>
+</section>
+
+<script src="/js/actions.js"></script>
+</body>
+</html>
