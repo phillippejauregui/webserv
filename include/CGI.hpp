@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "PollServer.hpp"
+#include "CGIProcess.hpp"
 
 struct CGIEnv {
     std::string requestMethod;
@@ -30,7 +31,7 @@ struct CGIEnv {
 };
 
 bool	isCGIvalid(LocationConfig const &loc, std::string const &fullPath);
-HttpResponse runCGI(const HttpRequest &req, const ServerConfig &server, const LocationConfig &loc, const std::string &fullPath);
-
+CGIProcess launchCGI(const HttpRequest &req, const ServerConfig &server, const LocationConfig &loc, const std::string &fullPath);
+HttpResponse parseCGIOutput(const std::string &raw);
 
 #endif

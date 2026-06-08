@@ -1,4 +1,8 @@
 #include "Parser.hpp"
+#include <sstream>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 ConfigParser::ConfigParser(int argc, char** argv)
 {
@@ -10,6 +14,12 @@ ConfigParser::ConfigParser(int argc, char** argv)
 const std::vector<ServerConfig>& ConfigParser::getServers() const
 {
 	return servers;
+}
+
+static std::string toString(size_t n) {
+    std::stringstream ss;
+    ss << n;
+    return ss.str();
 }
 
 std::vector<std::string> tokenize(const std::string& text)
@@ -163,4 +173,78 @@ void ConfigParser::parse()
 		throw std::runtime_error("Error reading config file");
 	std::vector<std::string> tokens = tokenize(text);
 	parseTokens(tokens);
+}
+
+HttpResponse makeUploadResponse(int status,
+                                const std::string& message,
+                                const std::string& extra)
+{
+    HttpResponse res;
+
+    res.statusCode = status;
+
+    switch (status) {
+        case 201: res.statusMessage = "Created"; break;
+        default:  res.statusMessage = "OK"; break;
+    }
+    std::string body =
+        "<html><body>"
+        "<h1>" + toString(status) + " " + res.statusMessage + "</h1>"
+        "<p>" + message + "</p>";
+    if (!extra.empty())
+        body += "<pre>" + extra + "</pre>";
+    body += "</body></html>";
+    res.body = body;
+    res.headers["Content-Type"] = "text/html";
+    res.headers["Content-Length"] = toString(res.body.size());
+    return res;
+}
+
+HttpResponse parseMultipartAndSave(const std::string& body,
+                                   const std::string& boundary,
+                                   const LocationConfig& location,
+                                   const ServerConfig& server)
+{
+    size_t start = body.find(boundary);
+    if (start == std::string::npos)
+        return buildError(400, "Start boundary not found", server);
+    start += boundary.size();
+    if (start + 1 < body.size() && body[start] == '\r' && body[start + 1] == '\n')
+        start += 2;
+    size_t headerEnd = body.find("\r\n\r\n", start);
+    if (headerEnd == std::string::npos)
+        return buildError(400, "Malformed multipart body", server);
+    std::string partHeaders = body.substr(start, headerEnd - start);
+    size_t contentStart = headerEnd + 4;
+    std::string endBoundary = "\r\n" + boundary + "--";
+    size_t end = body.find(endBoundary, contentStart);
+    if (end == std::string::npos)
+        return buildError(400, "End boundary not found", server);
+    const char* contentPtr = body.data() + contentStart;
+    size_t contentSize = end - contentStart;
+    size_t fn = partHeaders.find("filename=\"");
+    if (fn == std::string::npos)
+        return buildError(400, "Missing filename", server);
+    size_t fnStart = fn + 10;
+    size_t fnEnd = partHeaders.find("\"", fnStart);
+    if (fnEnd == std::string::npos)
+        return buildError(400, "Malformed filename", server);
+    std::string filename = partHeaders.substr(fnStart, fnEnd - fnStart);
+    if (filename.empty())
+        return buildError(400, "Empty filename", server);
+    std::string filepath = location.upload_store + "/" + filename;
+    int fd = open(filepath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0)
+        return buildError(500, "Failed to open file for writing", server);
+    size_t written = 0;
+    while (written < contentSize) {
+        ssize_t n = write(fd, contentPtr + written, contentSize - written);
+        if (n < 0) {
+            close(fd);
+            return buildError(500, "Write error", server);
+        }
+        written += static_cast<size_t>(n);
+    }
+    close(fd);
+    return makeUploadResponse(201, "File uploaded", filename);
 }

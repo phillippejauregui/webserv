@@ -8,7 +8,8 @@
 # include <fstream>
 # include <sstream>
 # include <deque>
-# include <cstdint>
+# include <cstdlib>
+# include <stdint.h>
 # include <cerrno>
 # include <cstring>
 # include "ServerConfig.hpp"

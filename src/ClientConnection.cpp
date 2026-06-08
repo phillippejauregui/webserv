@@ -13,7 +13,6 @@ ClientConnection::~ClientConnection(){
     close(_fd);
 }
 
-/* Read buffer access */
 std::string const& ClientConnection::getReadBuffer() const {
     return _readBuffer;
 }
@@ -26,7 +25,6 @@ void ClientConnection::popReadBytes(size_t n) {
     }
 }
 
-/* Write queue API */
 void ClientConnection::enqueueResponse(const std::string &resp) {
     bool wasEmpty = _responseQueue.empty();
     _responseQueue.push_back(resp);
@@ -48,7 +46,6 @@ void ClientConnection::popResponse() {
     _writeOffset = 0;
 }
 
-/* Write helpers */
 bool ClientConnection::handleWrite() {
     if (_responseQueue.empty()) {
         return true;
@@ -76,7 +73,6 @@ void ClientConnection::clearWrite() {
     _writeOffset = 0;
 }
 
-/* Response prep: enqueue serialized response */
 void ClientConnection::prepResponse(const HttpResponse &response)
 {
     std::ostringstream out;
@@ -89,7 +85,6 @@ void ClientConnection::prepResponse(const HttpResponse &response)
     enqueueResponse(out.str());
 }
 
-/* Read handling */
 bool ClientConnection::handleRead() {
     char buf[4096];
     ssize_t n = recv(_fd, buf, sizeof(buf), 0);

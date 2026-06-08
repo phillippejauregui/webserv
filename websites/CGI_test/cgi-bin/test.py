@@ -1,8 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S python3 -u
 
 print("Content-Type: text/html")
 print()
-
 print("<html>")
 print("<body>")
 print("<h1>Python CGI Test</h1>")
