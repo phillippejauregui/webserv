@@ -13,7 +13,6 @@
 #ifndef SOCKETUTILS_HPP
 #define SOCKETUTILS_HPP
 
-# include "ServerSocket.hpp"
 # include <fcntl.h>
 
 int	setNonBlocking(int fd);

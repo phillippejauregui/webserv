@@ -27,18 +27,18 @@
 #include "CGIProcess.hpp"
 # include <signal.h>
 
+class ServerSocket;
+
 class PollServer {
     private:
         std::vector<pollfd>                 _fds;
-        std::vector<ServerSocket*>          _servers;
+        std::vector<ServerSocket*>           _servers; 
         std::map<int, ClientConnection*>    _clients;
         std::map<int, ClientState>          _states;
         std::vector<ServerConfig>           _configs;
         std::map<int, ServerConfig>         _clientConfig;
-
-        // CGI tracking
-        std::map<int, CGIProcess>           _cgiProcesses;  // clientFd -> CGIProcess
-        std::map<int, int>                  _pipeToClient;  // pipeFd   -> clientFd
+        std::map<int, CGIProcess>           _cgiProcesses;
+        std::map<int, int>                  _pipeToClient;
 
         PollServer(const PollServer &src);
         PollServer& operator=(const PollServer &rhs);
@@ -50,7 +50,6 @@ class PollServer {
         void    _enableWrite(int fd);
         void    _disableWrite(int fd);
 
-        // CGI pipe handlers
         void    _handleCGIWrite(int pipeFd);
         void    _handleCGIRead(int pipeFd);
         void    _finishCGI(int clientFd);

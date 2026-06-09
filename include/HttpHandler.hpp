@@ -24,7 +24,6 @@
 # include "HttpResponse.hpp"
 # include "ServerConfig.hpp"
 # include "CGI.hpp"
-# include "PollServer.hpp"
 
 struct MultipartPart {
     std::string filename;

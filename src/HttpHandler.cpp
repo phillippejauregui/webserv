@@ -201,11 +201,8 @@ HttpResponse execute(const HttpRequest &req,
     }
 
     if (!allowed) {
-        response.statusCode = 405;
-        response.statusMessage = "method not allowed";
-        return response;
+        return (buildError(405, "Not allowed", server));
     }
-
     std::string path = resolvePath(req, loc);
 
     //std::cout << "Method called : " << req.method << "\n";
@@ -216,6 +213,5 @@ HttpResponse execute(const HttpRequest &req,
         return handlePost(req, loc, server, path);
     else if (req.method == "DELETE")
         return handleDelete(path, server);
-
-    return response;
+    return makeUploadResponse(100, "Unsupported request type", "");
 }

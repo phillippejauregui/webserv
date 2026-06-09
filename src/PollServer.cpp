@@ -11,7 +11,6 @@
 /* ************************************************************************** */
 
 #include "PollServer.hpp"
-#include "Parser.hpp"
  
 PollServer::PollServer() {}
  
@@ -216,7 +215,8 @@ void PollServer::_abortCGI(int clientFd) {
     _enableWrite(clientFd);
 }
 
-void PollServer::_clientEvent(size_t index) {
+void PollServer::_clientEvent(size_t index)
+{
     int clientFd = _fds[index].fd;
     if (_clients.find(clientFd) == _clients.end())
         return;
@@ -333,7 +333,7 @@ void PollServer::_clientEvent(size_t index) {
         client->handleWrite();
         _enableWrite(clientFd);
         state = ClientState();
-        continue;        
+        continue;
     }
 }
 

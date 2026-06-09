@@ -12,8 +12,6 @@
 
 #include "ServerSocket.hpp"
 
-//create socket, autorize reuse of port, bind fd to wanted port
-//listen, returns usable fd
 ServerSocket::ServerSocket(ServerConfig const &config){
 	int	opt = 1;
 	_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -24,9 +22,9 @@ ServerSocket::ServerSocket(ServerConfig const &config){
 		close(_fd);
 		throw std::runtime_error("setsockopt failed");
 	}
-	_addr.sin_family = AF_INET; // IPv4
+	_addr.sin_family = AF_INET;
 	_addr.sin_port = htons(config.listen);
-	_addr.sin_addr.s_addr = INADDR_ANY; // 0.0.0.0
+	_addr.sin_addr.s_addr = INADDR_ANY;
 	if (bind(_fd, (struct sockaddr*)&_addr, sizeof(_addr)) == -1){
 		close(_fd);
 		throw std::runtime_error("bind failed");
