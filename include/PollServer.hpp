@@ -54,6 +54,7 @@ class PollServer {
         void    _handleCGIRead(int pipeFd);
         void    _finishCGI(int clientFd);
         void    _abortCGI(int clientFd);
+        bool    decodeChunkedBody(ClientConnection* client, ClientState& state);
 
     public:
         PollServer();

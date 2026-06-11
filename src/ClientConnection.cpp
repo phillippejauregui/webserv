@@ -17,6 +17,20 @@ std::string const& ClientConnection::getReadBuffer() const {
     return _readBuffer;
 }
 
+void ClientConnection::replaceReadBuffer(const std::string& s) {
+    _readBuffer = s;
+    _headersParsed = true;
+
+    size_t pos = _readBuffer.find("\r\n\r\n");
+    if (pos == std::string::npos) {
+        _headerEnd = 0;
+        _expectedLength = 0;
+        return;
+    }
+    _headerEnd = pos + 4;
+    _expectedLength = _readBuffer.size() - _headerEnd;
+}
+
 void ClientConnection::popReadBytes(size_t n) {
     if (n >= _readBuffer.size()) {
         _readBuffer.clear();

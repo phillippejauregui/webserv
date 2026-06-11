@@ -128,9 +128,50 @@ void PollServer::_handleCGIWrite(int pipeFd)
     cgi.inputDone = true;
     _removeFd(pipeFd);
 }
- 
- 
- 
+
+bool PollServer::decodeChunkedBody(ClientConnection* client, ClientState& state) {
+    const std::string& buf = client->getReadBuffer();
+
+    size_t headerEnd = buf.find("\r\n\r\n");
+    if (headerEnd == std::string::npos)
+        return false;
+
+    size_t pos = headerEnd + 4;
+    std::string decodedBody;
+
+    while (true) {
+        size_t lineEnd = buf.find("\r\n", pos);
+        if (lineEnd == std::string::npos)
+            return false;
+        std::string hex = buf.substr(pos, lineEnd - pos);
+        size_t chunkSize = strtol(hex.c_str(), NULL, 16);
+        //std::cerr << "[CHUNK] size hex=" << hex
+                  //<< " dec=" << chunkSize << "\n";
+        pos = lineEnd + 2;
+        if (chunkSize == 0) {
+            if (buf.size() < pos + 2)
+                return false;
+           // std::cerr << "[CHUNK] final chunk received\n";
+            std::string newBuf = buf.substr(0, headerEnd + 4);
+            newBuf += decodedBody;
+            client->replaceReadBuffer(newBuf);
+            state.requestReady = true;
+            state.bodyBytesRead = decodedBody.size();
+            return true;
+        }
+        if (buf.size() < pos + chunkSize + 2)
+            return false;
+        decodedBody.append(buf.substr(pos, chunkSize));
+        //std::cerr << "[CHUNK] appended " << chunkSize
+                  //<< " bytes (total=" << decodedBody.size() << ")\n";
+        pos += chunkSize;
+        if (buf.substr(pos, 2) != "\r\n")
+            return false;
+
+        pos += 2;
+    }
+}
+
 void PollServer::_handleCGIRead(int pipeFd)
 {
     std::map<int,int>::iterator itClient = _pipeToClient.find(pipeFd);
@@ -215,19 +256,13 @@ void PollServer::_abortCGI(int clientFd) {
     _enableWrite(clientFd);
 }
 
-void PollServer::_clientEvent(size_t index)
-{
+void PollServer::_clientEvent(size_t index) {
     int clientFd = _fds[index].fd;
     if (_clients.find(clientFd) == _clients.end())
         return;
     ClientConnection *client = _clients[clientFd];
     ClientState &state = _states[clientFd];
- 
-    //std::cerr << "\n[CLIENT_EVENT] fd=" << clientFd
-      //        << " BEFORE READ buffer=" << client->getReadBuffer().size() << "\n";
- 
     if (!client->handleRead()) {
-        //std::cerr << "[READ] handleRead failed, closing client\n";
         _abortCGI(clientFd);
         delete client;
         _clients.erase(clientFd);
@@ -237,39 +272,35 @@ void PollServer::_clientEvent(size_t index)
 		close(clientFd);
         return;
     }
-    //std::cerr << "[CLIENT_EVENT] AFTER READ buffer="
-             // << client->getReadBuffer().size() << "\n";
- 
     while (true) {
         const std::string &buf = client->getReadBuffer();
-        //std::cerr << "[STATE] headersComplete=" << state.headersComplete
-        //          << " contentLength=" << state.contentLength
-         //         << " requestReady=" << state.requestReady
-          //        << " bufferSize=" << buf.size() << "\n";
         if (buf.empty())
             break;
         if (!state.headersComplete) {
             size_t headerEnd = buf.find("\r\n\r\n");
             if (headerEnd == std::string::npos) {
-                //std::cerr << "[HEADERS] Not complete yet\n";
                 break;
             }
-            //std::cerr << "[HEADERS] Complete at pos=" << headerEnd << "\n";
             state.headersComplete = true;
             std::string headerBlock = buf.substr(0, headerEnd + 4);
-            size_t pos = headerBlock.find("Content-Length:");
-            if (pos != std::string::npos) {
-                size_t start = pos + 15;
-                size_t end = headerBlock.find("\r\n", start);
-                state.contentLength = std::atoi(headerBlock.substr(start, end - start).c_str());
-                //std::cerr << "[HEADERS] Content-Length=" << state.contentLength << "\n";
-            } else {
+            if (headerBlock.find("Transfer-Encoding: chunked") != std::string::npos) {
+                state.isChunked = true;
                 state.contentLength = 0;
-                //std::cerr << "[HEADERS] No Content-Length\n";
+                //std::cerr << "[CHUNK] Chunked mode enabled\n";
+            }
+            else {
+                size_t pos = headerBlock.find("Content-Length:");
+                if (pos != std::string::npos) {
+                    size_t start = pos + 15;
+                    size_t end = headerBlock.find("\r\n", start);
+                    state.contentLength = std::atoi(headerBlock.substr(start, end - start).c_str());
+                } else {
+                    state.contentLength = 0;
+                }
             }
             size_t maxBody = _clientConfig[clientFd].client_max_body_size;
             if (maxBody > 0 && state.contentLength > maxBody) {
-                std::cerr << "[HEADERS] Body too large, returning 413\n";
+                //std::cerr << "[HEADERS] Body too large, returning 413\n";
                 client->prepResponse(buildError(413, "Request Entity Too Large", _clientConfig[clientFd]));
                 client->handleWrite();
                 _enableWrite(clientFd);
@@ -278,26 +309,33 @@ void PollServer::_clientEvent(size_t index)
             }            
         }
         if (!state.requestReady) {
-            size_t headerEnd = buf.find("\r\n\r\n");
-            size_t bodyStart = headerEnd + 4;
-            size_t bodySize = buf.size() - bodyStart;
-            //std::cerr << "[BODY] have=" << bodySize
-                      //<< " need=" << state.contentLength << "\n";
- 
-            if (bodySize < state.contentLength) {
-                //std::cerr << "[BODY] Not enough body yet, waiting...\n";
-                break;
+            if (state.isChunked)
+            {
+                if (!decodeChunkedBody(client, state))
+                    break;
             }
-            //std::cerr << "[BODY] Body complete\n";
-            state.requestReady = true;
+            else {
+                size_t headerEnd = buf.find("\r\n\r\n");
+                size_t bodyStart = headerEnd + 4;
+                size_t bodySize = buf.size() - bodyStart;
+                if (bodySize < state.contentLength) {
+                    break;
+                }
+                state.requestReady = true;
+            }
         }
+
+        if (!state.requestReady)
+            break;
+
+        //std::cerr << "===== [DBG RAW REQUEST fd=" << clientFd << "] =====\n";
+        //std::cerr << client->getReadBuffer() << "\n";
+        //std::cerr << "===== [END RAW REQUEST] =====\n";
         HttpRequest request;
         size_t consumed = 0;
         if (!parseRequestFromBuffer(buf, request, consumed)) {
-            //std::cerr << "[PARSER] parseRequestFromBuffer returned false\n";
             break;
         }
-        //std::cerr << "[PARSER] Parsed request, consumed=" << consumed << "\n";
         client->popReadBytes(consumed);
         LocationConfig loc = route(request, _clientConfig[clientFd]);
         if (!loc.redirect.empty()) {
@@ -315,12 +353,11 @@ void PollServer::_clientEvent(size_t index)
         std::string path = resolvePath(request, loc);
         if (isCGIvalid(loc, path) &&
             (request.method == "GET" || request.method == "POST")) {
-            //std::cerr << "[CGI] Launching non-blocking CGI for " << path << "\n";
             try {
                 CGIProcess cgi = launchCGI(request, _clientConfig[clientFd], loc, path);
                 registerCGI(clientFd, cgi);
             } catch (std::exception &e) {
-                std::cerr << "[CGI] Launch failed: " << e.what() << "\n";
+                //std::cerr << "[CGI] Launch failed: " << e.what() << "\n";
                 client->prepResponse(buildError(500, "Internal Server Error", _clientConfig[clientFd]));
                 client->handleWrite();
                 _enableWrite(clientFd);
@@ -333,7 +370,7 @@ void PollServer::_clientEvent(size_t index)
         client->handleWrite();
         _enableWrite(clientFd);
         state = ClientState();
-        continue;
+        continue;        
     }
 }
 

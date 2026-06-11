@@ -35,6 +35,7 @@ public :
     ~ClientConnection();
 
     std::string const& getReadBuffer() const;
+    void replaceReadBuffer(const std::string& s);
     void popReadBytes(size_t n);
 
     void enqueueResponse(const std::string &resp);

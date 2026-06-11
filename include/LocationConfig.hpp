@@ -19,6 +19,7 @@
 # include <iostream>
 
 struct LocationConfig {
+	int									redirectNum;
 	bool								upload_enabled;
 	bool								autoindex;
 	std::string							upload_store;

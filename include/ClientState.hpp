@@ -15,13 +15,19 @@
 
 #include <string>
 
-struct	ClientState{
-	std::string	buffer;
-	bool		headersComplete;
-	bool		requestReady;
-	size_t		contentLength;
-	
-	ClientState() : headersComplete(false), requestReady(false), contentLength(0){}
+struct ClientState {
+    bool headersComplete;
+    bool requestReady;
+    size_t contentLength;
+    bool isChunked;
+    size_t bodyBytesRead;
+
+    ClientState()
+        : headersComplete(false),
+          requestReady(false),
+          contentLength(0),
+          isChunked(false),
+          bodyBytesRead(0) {}
 };
 
 #endif
